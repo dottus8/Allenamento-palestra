@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Programma di Allenamento</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    select, input {
+      padding: 6px;
+      margin: 4px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      background: white;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+    }
+    .log {
+      background: white;
+      padding: 1em;
+      margin-top: 2em;
+      border-radius: 8px;
+    }
+    .entry {
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 0.5em;
+      padding-bottom: 0.5em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Programma di Allenamento</h1>
+
+  <label for="daySelect">Scegli il giorno:</label>
+  <select id="daySelect"></select>
+
+  <div id="workoutContainer"></div>
+
+  <div class="log">
+    <h2>Storico</h2>
+    <div id="storico"></div>
+  </div>
+
+  <script>
+    const workoutProgram = {
+      "Lunedì": [
+        { esercizio: "Panca Piana", serie: 3, ripetizioni: 8, peso: 0, difficolta: 0 },
+        { esercizio: "Croci con manubri", serie: 3, ripetizioni: 12, peso: 0, difficolta: 0 }
+      ],
+      "Martedì": [
+        { esercizio: "Squat", serie: 4, ripetizioni: 6, peso: 0, difficolta: 0 },
+        { esercizio: "Affondi", serie: 3, ripetizioni: 10, peso: 0, difficolta: 0 }
+      ],
+      "Mercoledì": [],
+      "Giovedì": [
+        { esercizio: "Rematore", serie: 3, ripetizioni: 10, peso: 0, difficolta: 0 },
+        { esercizio: "Lat Machine", serie: 3, ripetizioni: 12, peso: 0, difficolta: 0 }
+      ],
+      "Venerdì": [
+        { esercizio: "Military Press", serie: 4, ripetizioni: 6, peso: 0, difficolta: 0 },
+        { esercizio: "Alzate Laterali", serie: 3, ripetizioni: 12, peso: 0, difficolta: 0 }
+      ],
+      "Sabato": [],
+      "Domenica": []
+    };
+
+    const daySelect = document.getElementById('daySelect');
+    const workoutContainer = document.getElementById('workoutContainer');
+    const storicoDiv = document.getElementById('storico');
+
+    Object.keys(workoutProgram).forEach(day => {
+      const option = document.createElement('option');
+      option.value = day;
+      option.textContent = day;
+      daySelect.appendChild(option);
+    });
+
+    daySelect.addEventListener('change', () => {
+      const selectedDay = daySelect.value;
+      loadWorkoutForDay(selectedDay);
+    });
+
+    function loadWorkoutForDay(day) {
+      const saved = JSON.parse(localStorage.getItem(day)) || workoutProgram[day];
+
+      if (!saved || saved.length === 0) {
+        workoutContainer.innerHTML = "<p>Nessun allenamento previsto per questo giorno.</p>";
+        return;
+      }
+
+      let html = `
+        <h2>Allenamento di ${day}</h2>
+        <table>
+          <tr>
+            <th>Esercizio</th>
+            <th>Serie</th>
+            <th>Ripetizioni</th>
+            <th>Peso (kg)</th>
+            <th>Difficoltà (1-5)</th>
+            <th>Volume</th>
+          </tr>
+      `;
+
+      saved.forEach((exercise, index) => {
+        html += `
+          <tr>
+            <td>${exercise.esercizio}</td>
+            <td><input type="number" value="${exercise.serie}" id="serie-${index}"></td>
+            <td><input type="number" value="${exercise.ripetizioni}" id="reps-${index}"></td>
+            <td><input type="number" value="${exercise.peso}" id="peso-${index}" step="0.5"></td>
+            <td><input type="number" value="${exercise.difficolta || 0}" id="diff-${index}" min="1" max="5" step="0.5"></td>
+            <td id="volume-${index}">${exercise.serie * exercise.ripetizioni * exercise.peso}</td>
+          </tr>
+        `;
+      });
+
+      html += `</table><button onclick="saveWorkout('${day}')">Salva Allenamento</button>`;
+      workoutContainer.innerHTML = html;
+    }
+
+    function saveWorkout(day) {
+      const exercises = workoutProgram[day].map((exercise, index) => {
+        const serie = parseInt(document.getElementById(`serie-${index}`).value) || 0;
+        const ripetizioni = parseInt(document.getElementById(`reps-${index}`).value) || 0;
+        const peso = parseFloat(document.getElementById(`peso-${index}`).value) || 0;
+        const difficolta = parseFloat(document.getElementById(`diff-${index}`).value) || 0;
+        const volume = serie * ripetizioni * peso;
+        document.getElementById(`volume-${index}`).textContent = volume;
+
+        return {
+          esercizio: exercise.esercizio,
+          serie,
+          ripetizioni,
+          peso,
+          difficolta
+        };
+      });
+
+      localStorage.setItem(day, JSON.stringify(exercises));
+      aggiornaStorico(day, exercises);
+      alert("Allenamento salvato!");
+    }
+
+    function aggiornaStorico(day, esercizi) {
+      const oggi = new Date().toLocaleString();
+      const storico = JSON.parse(localStorage.getItem("storicoAllenamento")) || [];
+      storico.unshift({ giorno: day, data: oggi, esercizi });
+      localStorage.setItem("storicoAllenamento", JSON.stringify(storico));
+      mostraStorico();
+    }
+
+    function mostraStorico() {
+      const storico = JSON.parse(localStorage.getItem("storicoAllenamento")) || [];
+      storicoDiv.innerHTML = storico.map(entry => {
+        const dettagli = entry.esercizi.map(e => `
+          <li>${e.esercizio}: ${e.serie}x${e.ripetizioni}x${e.peso}kg - Difficoltà ${e.difficolta}</li>
+        `).join("");
+        return `
+          <div class="entry">
+            <strong>${entry.giorno}</strong> - <em>${entry.data}</em>
+            <ul>${dettagli}</ul>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Avvio iniziale
+    loadWorkoutForDay(daySelect.value = "Lunedì");
+    mostraStorico();
+  </script>
+</body>
+</html>
